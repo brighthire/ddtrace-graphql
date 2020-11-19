@@ -4,6 +4,7 @@ import os
 import ddtrace
 import graphql
 from ddtrace.ext import errors as ddtrace_errors
+from rx import AnonymousObservable
 
 from ddtrace_graphql import utils
 
@@ -68,40 +69,41 @@ def traced_graphql_wrapped(
             result = func(*args, **kwargs)
             return result
         finally:
-            # `span.error` must be integer
-            span.error = int(result is None)
+            if not isinstance(result, AnonymousObservable):
+                # `span.error` must be integer
+                span.error = int(result is None)
 
-            if result is not None:
+                if result is not None:
 
-                span.error = 0
-                if result.errors:
-                    span.set_tag(
-                        ERRORS,
-                        utils.format_errors(result.errors))
-                    span.set_tag(
-                        ddtrace_errors.ERROR_STACK,
-                        utils.format_errors_traceback(result.errors))
-                    span.set_tag(
-                        ddtrace_errors.ERROR_MSG,
-                        utils.format_errors_msg(result.errors))
-                    span.set_tag(
-                        ddtrace_errors.ERROR_TYPE,
-                        utils.format_errors_type(result.errors))
+                    span.error = 0
+                    if result.errors:
+                        span.set_tag(
+                            ERRORS,
+                            utils.format_errors(result.errors))
+                        span.set_tag(
+                            ddtrace_errors.ERROR_STACK,
+                            utils.format_errors_traceback(result.errors))
+                        span.set_tag(
+                            ddtrace_errors.ERROR_MSG,
+                            utils.format_errors_msg(result.errors))
+                        span.set_tag(
+                            ddtrace_errors.ERROR_TYPE,
+                            utils.format_errors_type(result.errors))
 
-                    span.error = int(utils.is_server_error(
-                        result,
-                        ignore_exceptions,
-                    ))
+                        span.error = int(utils.is_server_error(
+                            result,
+                            ignore_exceptions,
+                        ))
 
-                span.set_metric(
-                    CLIENT_ERROR,
-                    int(bool(not span.error and result.errors))
-                )
-                span.set_metric(INVALID, int(result.invalid))
-                span.set_metric(DATA_EMPTY, int(result.data is None))
+                    span.set_metric(
+                        CLIENT_ERROR,
+                        int(bool(not span.error and result.errors))
+                    )
+                    span.set_metric(INVALID, int(result.invalid))
+                    span.set_metric(DATA_EMPTY, int(result.data is None))
 
-            if span_callback is not None:
-                span_callback(result=result, span=span)
+                if span_callback is not None:
+                    span_callback(result=result, span=span)
 
 
 def traced_graphql(

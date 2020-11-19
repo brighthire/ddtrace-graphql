@@ -18,7 +18,7 @@ only certain calls you can use the ``traced_graphql`` function::
 
 from ddtrace.contrib.util import require_modules
 
-required_modules = ['graphql']
+required_modules = ['graphql', 'rx']
 
 with require_modules(required_modules) as missing_modules:
     if not missing_modules:
